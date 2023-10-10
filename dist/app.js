@@ -1,44 +1,60 @@
 "use strict";
-const userName = "Max";
-let age2 = 30;
+const e1 = {
+    name: 'Max',
+    privileges: ['create-server'],
+    startDate: new Date(),
+};
 function add(a, b) {
-    let result;
-    result = a + b;
-    return result;
-}
-const add2 = (a, b) => {
+    if (typeof a === 'string' || typeof b === 'string') {
+        return a.toString() + b.toString();
+    }
     return a + b;
-};
-const add3 = (a, b = 1) => a + b;
-const printOutput = output => console.log(output);
-const button = document.querySelector('button');
-if (button) {
-    button.addEventListener('click', event => console.log(event));
 }
-console.log(add2(2, 5));
-console.log(add3(5, 6));
-printOutput(add3(5));
-const hobbies = ['Sports', 'Cooking', 'Hiking', 'Coding'];
-console.log(hobbies[0], hobbies[1]);
-const activeHobbies = ['Hiking'];
-activeHobbies.push(...hobbies);
-console.log(activeHobbies);
-const person = {
-    firstName: 'Max',
-    age: 30
-};
-const copiedPerson = Object.assign({}, person);
-console.log(copiedPerson);
-const add4 = (...numbers) => {
-    let result = 0;
-    return numbers.reduce((curResult, curValue) => {
-        return curResult + curValue;
-    }, 0);
-};
-const addNumbers = add4(5, 10, 2, 3.7);
-console.log(addNumbers);
-const [hobby1, hobby2, ...remainingHobbies] = hobbies;
-console.log(hobbies, hobby1, hobby2);
-const { firstName: FName, age } = person;
-console.log(FName, age, person);
+function printEmployeeInformation(emp) {
+    console.log('Name: ' + emp.name);
+    if ('privileges' in emp) {
+        console.log('Privileges: ' + emp.privileges);
+    }
+    if ('startDate' in emp) {
+        console.log('Start Date: ' + emp.startDate);
+    }
+}
+printEmployeeInformation(e1);
+class Car {
+    drive() {
+        console.log('Driving...');
+    }
+}
+class Truck {
+    drive() {
+        console.log('Driving a truck...');
+    }
+    loadCargo(amount) {
+        console.log('Loading cargo ...' + amount);
+    }
+}
+const v1 = new Car();
+const v2 = new Truck();
+function useVehicle(vehicle) {
+    vehicle.drive();
+    if (vehicle instanceof Truck) {
+        vehicle.loadCargo(1000);
+    }
+}
+useVehicle(v1);
+useVehicle(v2);
+function moveAnimal(animal) {
+    switch (animal.type) {
+        case 'bird':
+            console.log('Moving with speed: ' + animal.flyingSpeed);
+            break;
+        case 'horse':
+            console.log('Moving with speed: ' + animal.runningSpeed);
+            break;
+    }
+}
+moveAnimal({ type: 'bird', flyingSpeed: 10 });
+moveAnimal({ type: 'horse', runningSpeed: 10 });
+const userInputElement = document.getElementById('message-output');
+userInputElement.value = "Hi there!";
 //# sourceMappingURL=app.js.map

@@ -1,66 +1,107 @@
-const userName = "Max";
-//userName = "Maximilian";   // 수정 불가
-let age2 = 30;
+// 교차 타입 
+type Admin = {
+  name: string;
+  privileges: string[];
+};
 
+type Employee = {
+  name: string;
+  startDate: Date;
+};
 
-function add(a: number, b: number) {
-  let result;
-  result = a + b;
-  return result;
-}
+type ElevatedEmployee = Admin & Employee; // 교차 타입
 
-//console.log(result)
+const e1: ElevatedEmployee = {
+  name: 'Max',
+  privileges: ['create-server'],
+  startDate: new Date(),
+};
 
-// 화살표 함수 
-const add2 = (a: number, b: number) => {
+type Combinable = string | number;
+type Numeric = number | boolean;
+
+type Universal = Combinable & Numeric; // 교차 타입
+
+// 타입 가드 : 타입을 체크하는 함수(typeof)
+function add(a: Combinable, b: Combinable){
+  if(typeof a === 'string' || typeof b === 'string'){
+    return a.toString() + b.toString();
+  }
   return a + b;
 }
 
-// 화살표 함수 축약
-const add3 = (a: number, b: number=1) => a + b;
+type UnknownEmployee = Employee | Admin;
 
-// 화살표 함수 축약2
-const printOutput: (a: number | string) => void = output => console.log(output);
-
-const button = document.querySelector('button');
-
-if(button) {
-  button.addEventListener('click', event => console.log(event));
+function printEmployeeInformation(emp: UnknownEmployee){
+  console.log('Name: ' + emp.name);
+  if('privileges' in emp){
+    console.log('Privileges: ' + emp.privileges);
+  }
+  if('startDate' in emp){
+    console.log('Start Date: ' + emp.startDate);
+  }
 }
 
-console.log(add2(2, 5));
-console.log(add3(5, 6));
-printOutput(add3(5));
+printEmployeeInformation(e1);
 
-// Spread 연산자
-const hobbies = ['Sports', 'Cooking', 'Hiking', 'Coding'];
-console.log(hobbies[0], hobbies[1]);
+class Car {
+  drive(){
+    console.log('Driving...');
+  }
+}
 
-const activeHobbies = ['Hiking'];
-activeHobbies.push(...hobbies);
-console.log(activeHobbies);
+class Truck {
+  drive(){
+    console.log('Driving a truck...');
+  }
 
-const person = {
-  firstName: 'Max',
-  age: 30
-};
+  loadCargo(amount: number){
+    console.log('Loading cargo ...' + amount);
+  }
+}
 
-const copiedPerson = {...person};
-console.log(copiedPerson);
+type Vehicle = Car | Truck;
 
-const add4 = (...numbers: number[]) => {
-  let result = 0;
-  return numbers.reduce((curResult, curValue) => {
-    return curResult + curValue;
-    }, 0);                        // 0은 초기값
-};
+const v1 = new Car();
+const v2 = new Truck();
 
-const addNumbers = add4(5, 10, 2, 3.7);
-console.log(addNumbers);
+function useVehicle(vehicle: Vehicle){
+  vehicle.drive();
+  // instanceof : 클래스의 인스턴스인지 확인
+  if(vehicle instanceof Truck){
+    vehicle.loadCargo(1000);
+  }
+}
 
-// 배열, 객체 비구조 할당
-const [hobby1, hobby2, ...remainingHobbies] = hobbies;
-console.log(hobbies, hobby1, hobby2);
+useVehicle(v1);
+useVehicle(v2);
 
-const {firstName: FName, age} = person;
-console.log(FName, age, person);
+interface Bird {
+  type: 'bird';           // type 속성 사용 
+  flyingSpeed: number;
+}
+
+interface Horse {
+  type: 'horse';
+  runningSpeed: number;
+}
+
+type Animal = Bird | Horse;
+
+function moveAnimal(animal : Animal){
+  switch(animal.type){
+    case 'bird':
+      console.log('Moving with speed: ' + animal.flyingSpeed);
+      break;
+    case 'horse':
+      console.log('Moving with speed: ' + animal.runningSpeed);
+      break;
+  }
+}
+
+moveAnimal({type: 'bird', flyingSpeed: 10});
+moveAnimal({type: 'horse', runningSpeed: 10});
+
+// 타입 캐스팅
+const userInputElement = document.getElementById('message-output')! as HTMLInputElement;
+userInputElement.value = "Hi there!";
