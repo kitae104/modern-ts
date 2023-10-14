@@ -1,11 +1,45 @@
+// Drag & Drop 인터페이스
+interface Draggable {
+  dragStartHandler(event: DragEvent): void;   // 드래그 시작 이벤트 핸들러
+  dragEndHandler(event: DragEvent): void;     // 드래그 종료 이벤트 핸들러
+}
+
+interface DragTarget {
+  dragOverHandler(event: DragEvent): void;    // 드래그 오버 이벤트 핸들러
+  dropHandler(event: DragEvent): void;        // 드랍 이벤트 핸들러
+  dragLeaveHandler(event: DragEvent): void;   // 드래그 리브 이벤트 핸들러
+}
+
+// Project Type
+enum ProjectStatus { Active, Finished }
+
+class Project {
+  constructor(
+    public id: string, 
+    public title: string, 
+    public description: string, 
+    public people: number,
+    public status: ProjectStatus
+    ){}  
+}
+
 // Project State Management and Rendering
-class ProjectState {
-  private listeners: any[] = [];              // 이벤트 리스너를 담을 배열
-  private projects: any[] = [];
+type Listener<T> = (items: T[]) => void;
+
+class State<T> {
+  protected listeners: Listener<T>[] = [];
+
+  addListener(listenerFn: Listener<T>) {
+    this.listeners.push(listenerFn);
+  }
+}
+
+class ProjectState extends State<Project>{  
+  private projects: Project[] = [];
   private static instance: ProjectState;
 
-  private constructor() {
-
+  private constructor() { 
+    super();
   }
 
   // 싱글톤 패턴 사용하기 
@@ -17,21 +51,31 @@ class ProjectState {
     return this.instance; // 인스턴스를 반환한다.
   }
 
-  // 이벤트 리스너 추가하기
-  addListener(listenerFn: Function) {
-    this.listeners.push(listenerFn);   // 이벤트 리스너를 추가한다.
-  }
-
   addProject(title: string, description: string, numOfPeople: number) {
-    const newProject = {
-      id: Math.random().toString(),
-      title: title,
-      description: description,
-      people: numOfPeople,
-    };
+    const newProject = new Project(
+      Math.random().toString(),
+      title,
+      description,
+      numOfPeople,
+      ProjectStatus.Active
+    );    
     this.projects.push(newProject);             // 새로운 프로젝트를 추가한다.
     for(const listenerFn of this.listeners) {   // 이벤트 리스너를 순회하면서
       listenerFn(this.projects.slice());        // 이벤트 리스너를 실행한다.
+    }
+  }
+
+  moveProject(projectId: string, newStatus: ProjectStatus) {
+    const project = this.projects.find(prj => prj.id === projectId);
+    if(project && project.status !== newStatus) {
+      project.status = newStatus;
+      this.updateListeners();
+    }
+  }
+
+  private updateListeners() {
+    for(const listenerFn of this.listeners) {
+      listenerFn(this.projects.slice());
     }
   }
 }
@@ -93,83 +137,182 @@ function autobind(_: any, _2: string, descriptor: PropertyDescriptor) {
   return adjDescriptor;
 }
 
-// ProjectList 클래스
-class ProjectList {
+// Component Base Class
+abstract class Component<T extends HTMLElement, U extends HTMLElement> {
   templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLElement;
-  assignedProjects: any[];
+  hostElement: T;
+  element: U;
 
   // 생성자 함수
-  constructor(private type: 'active' | 'finished') {
+  constructor(
+    templateId: string, 
+    hostElementId: string, 
+    insertAtStart: boolean, 
+    newElementId?: string
+  ) {
     this.templateElement = document.getElementById(
-      'project-list'
+      templateId
     )! as HTMLTemplateElement;
-    this.hostElement = document.getElementById('app')! as HTMLDivElement;
-    this.assignedProjects = [];
+    this.hostElement = document.getElementById(hostElementId)! as T;
 
     const importedNode = document.importNode(
-      this.templateElement.content, 
+      this.templateElement.content,
       true
     );
-    this.element = importedNode.firstElementChild as HTMLElement;
-    this.element.id = `${this.type}-projects`;
+    this.element = importedNode.firstElementChild as U;
+    if(newElementId) {
+      this.element.id = newElementId;
+    }
 
-    projectState.addListener((projects: any[]) => {
-      this.assignedProjects = projects;             // 프로젝트를 할당한다.
-      this.renderProjects();                        // 프로젝트를 렌더링한다.
-    });
-    this.attach();
+    this.attach(insertAtStart);    
+  }
+
+  private attach(insertAtBeginning: boolean) {
+    this.hostElement.insertAdjacentElement(
+      insertAtBeginning ? 'afterbegin' : 'beforeend', 
+      this.element
+    );
+  }
+
+  abstract configure(): void;
+  abstract renderContent(): void;
+}
+
+// ProjectItem 클래스 
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> 
+  implements Draggable{
+
+  private project: Project;
+
+  constructor(hostId: string, project: Project) {
+    super('single-project', hostId, false, project.id);
+    this.project = project;
+
+    this.configure();
     this.renderContent();
   }
 
-  private renderProjects() {
-    const listEl = document.getElementById(`${this.type}-projects-list`);
-    for(const projItem of this.assignedProjects) {
-      const listItem = document.createElement('li');
-      listItem.textContent = projItem.title;
-      listEl?.appendChild(listItem);
+  @autobind
+  dragStartHandler(event: DragEvent): void {    
+    event.dataTransfer!.setData('text/plain', this.project.id);
+    event.dataTransfer!.effectAllowed = 'move';       
+  }
+
+  dragEndHandler(_: DragEvent): void {
+    console.log('DragEnd');
+  }
+
+  configure() {
+    this.element.addEventListener('dragstart', this.dragStartHandler);
+    this.element.addEventListener('dragend', this.dragEndHandler);
+  }
+
+  renderContent() {
+    console.log("renderContent", this.project.title, this.project.people, this.project.description, "renderContent")
+    this.element.querySelector('h2')!.textContent = this.project.title;
+    this.element.querySelector(
+      'h3'
+    )!.textContent = this.project.people.toString();
+    this.element.querySelector('p')!.textContent = this.project.description;
+  }
+}
+
+// ProjectList 클래스
+class ProjectList extends Component<HTMLDivElement, HTMLElement>
+  implements DragTarget{  
+
+  assignedProjects: Project[];
+
+  // 생성자 함수
+  constructor(private type: 'active' | 'finished') {
+    super('project-list', 'app', false, `${type}-projects`);
+    this.assignedProjects = [];
+
+    this.configure();
+    this.renderContent();
+  }
+
+  @autobind
+  dragOverHandler(event: DragEvent): void {
+    if(event.dataTransfer && event.dataTransfer.types[0] === 'text/plain') {
+      event.preventDefault();
+      const listEl = this.element.querySelector('ul')!;
+      listEl.classList.add('droppable');
     }
   }
 
-  private renderContent() {
+  @autobind
+  dropHandler(event: DragEvent): void {
+    const prjId = event.dataTransfer!.getData('text/plain');
+    projectState.moveProject(prjId, this.type === 'active' ? ProjectStatus.Active : ProjectStatus.Finished);
+  }
+
+  @autobind
+  dragLeaveHandler(_: DragEvent): void {
+    const listEl = this.element.querySelector('ul')!;
+    listEl.classList.remove('droppable');
+  }
+
+  configure(): void {
+    
+    this.element.addEventListener('dragover', this.dragOverHandler);
+    this.element.addEventListener('dragleave', this.dragLeaveHandler);
+    this.element.addEventListener('drop', this.dropHandler);
+
+    projectState.addListener((projects: Project[]) => {
+      const relevantProjects = projects.filter(prj => {
+        if (this.type === 'active') {
+          return prj.status === ProjectStatus.Active;
+        }
+        return prj.status === ProjectStatus.Finished;
+      });
+      this.assignedProjects = relevantProjects;
+      this.renderProjects();
+    });  
+  }
+
+  renderContent() {
     const listId = `${this.type}-projects-list`;
     this.element.querySelector('ul')!.id = listId;
     this.element.querySelector('h2')!.textContent = 
       this.type.toUpperCase() + ' PROJECTS';
   }
 
-  private attach() {
-    this.hostElement.insertAdjacentElement('beforeend', this.element);
+  private renderProjects() {
+    const listEl = document.getElementById(
+      `${this.type}-projects-list`
+    )! as HTMLUListElement;
+    listEl.innerHTML = '';
+    for (const prjItem of this.assignedProjects) {
+      new ProjectItem(this.element.querySelector('ul')!.id, prjItem);    
+    }
   }
 }
 
 // ProjectInput 클래스
-class ProjectInput {
+class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
 
-  // HTML 요소에 대한 선언 
-  templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLFormElement;
+  // HTML 요소에 대한 선언   
   titleInputElement: HTMLInputElement;
   descriptionInputElement: HTMLInputElement;
   peopleInputElement: HTMLInputElement;
 
   // 생성자 함수
-  constructor() {    
-    this.templateElement = document.getElementById('project-input')! as HTMLTemplateElement;
-    this.hostElement = document.getElementById('app')! as HTMLDivElement;
-
-    const importedNode = document.importNode(this.templateElement.content, true);
-    this.element = importedNode.firstElementChild as HTMLFormElement;
-    this.element.id = 'user-input';
-
+  constructor() {  
+    super('project-input', 'app', true, 'user-input');      
     this.titleInputElement = this.element.querySelector('#title') as HTMLInputElement;
     this.descriptionInputElement = this.element.querySelector('#description') as HTMLInputElement;
     this.peopleInputElement = this.element.querySelector('#people') as HTMLInputElement;
-    this.configure();
-    this.attach();
+    this.configure();    
   }
+
+  // 동작 설정 
+  configure() {
+    // 기존에는 bind(this)를 사용했지만, 데코레이터를 사용하면 자동으로 바인딩이 된다.
+    this.element.addEventListener('submit', this.submitHandler);
+  }  
+
+  renderContent() {}
 
   // 사용자 입력값 수집 - [제목, 내용, 인원] 반환
   private gatherUserInput(): [string, string, number] | void {
@@ -222,17 +365,6 @@ class ProjectInput {
       projectState.addProject(title, desc, people);   // 새로운 프로젝트 추가
       this.clearInputs();                             // 입력값 초기화
     }    
-  }
-  
-  // 동작 설정 
-  private configure() {
-    // 기존에는 bind(this)를 사용했지만, 데코레이터를 사용하면 자동으로 바인딩이 된다.
-    this.element.addEventListener('submit', this.submitHandler);
-  }
-
-  // HTML 요소에 추가
-  private attach() {
-    this.hostElement.insertAdjacentElement('afterbegin', this.element);
   }
 }
 
