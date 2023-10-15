@@ -1,7 +1,7 @@
 module.exports = {
     "env": {
         "browser": true,
-        "es2021": true
+        "all": true
     },
     "extends": [
         "eslint:recommended",
@@ -26,7 +26,7 @@ module.exports = {
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "ecmaVersion": "latest",
+        "ecmaVersion": "all",
         "sourceType": "module"
     },
     "plugins": [
